@@ -1,9 +1,11 @@
 const WeddingCard = require("../models/WeddingCard");
 
 // POST: Add new wedding card
+// controllers/weddingCardController.js
+
 exports.addWeddingCard = async (req, res) => {
   try {
-    const images = req.files?.map((f) => `/uploads/${f.filename}`) || [];
+    const imageUrls = req.files.map(file => file.path); // 🔥 Cloudinary URLs
 
     const card = await WeddingCard.create({
       title: req.body.title,
@@ -11,14 +13,15 @@ exports.addWeddingCard = async (req, res) => {
       discount: req.body.discount,
       size: req.body.size,
       paper: req.body.paper,
-      images,
+      images: imageUrls, // ✅ yahin save
     });
 
     res.status(201).json(card);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
+
 
 // GET: All wedding cards
 exports.getWeddingCards = async (req, res) => {
@@ -33,32 +36,28 @@ exports.getWeddingCards = async (req, res) => {
 // PUT: Update wedding card
 exports.updateWeddingCard = async (req, res) => {
   try {
-    const card = await WeddingCard.findById(req.params.id);
-    if (!card) {
-      return res.status(404).json({ message: "Card not found" });
+    const imageUrls = req.files?.map(file => file.path);
+
+    const updateData = {
+      ...req.body,
+    };
+
+    if (imageUrls && imageUrls.length > 0) {
+      updateData.images = imageUrls;
     }
 
-    // text fields update
-    card.title = req.body.title ?? card.title;
-    card.price = req.body.price ?? card.price;
-    card.discount = req.body.discount ?? card.discount;
-    card.size = req.body.size ?? card.size;
-    card.paper = req.body.paper ?? card.paper;
+    const card = await WeddingCard.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
 
-    // new images (optional)
-    if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(
-        (f) => `/uploads/${f.filename}`
-      );
-      card.images = [...card.images, ...newImages]; // append
-    }
-
-    const updated = await card.save();
-    res.json(updated);
+    res.json(card);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
+
 
 // GET: Single wedding card by ID
 exports.getWeddingCardById = async (req, res) => {
